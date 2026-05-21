@@ -6,6 +6,8 @@ import {
   applyOrbitToCamera,
   createModelGroup,
   createOrbitCameraState,
+  disposeObjectTree,
+  getEntityIdFromObject,
   orbitCameraDrag,
   screenPointToGround,
   type OrbitCameraState
@@ -56,7 +58,7 @@ export function ThreeViewport({ model, activeTool, selectedId, onSelect, onCreat
     const grid = new THREE.GridHelper(6000, 60, 0x64748b, 0xcbd5e1);
     scene.add(grid);
 
-    const modelGroup = createModelGroup(model);
+    const modelGroup = createModelGroup(model, selectedId);
     scene.add(modelGroup);
 
     const camera = new THREE.PerspectiveCamera(45, 1, 1, 100000);
@@ -111,7 +113,7 @@ export function ThreeViewport({ model, activeTool, selectedId, onSelect, onCreat
         pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
         const hit = raycaster.intersectObjects(modelGroup.children, true)[0];
-        onSelectRef.current?.(hit?.object.userData.entityId);
+        onSelectRef.current?.(getEntityIdFromObject(hit?.object));
       }
     };
 
@@ -153,10 +155,12 @@ export function ThreeViewport({ model, activeTool, selectedId, onSelect, onCreat
       renderer.domElement.removeEventListener('pointerup', pointerUp);
       renderer.domElement.removeEventListener('pointercancel', pointerUp);
       renderer.domElement.removeEventListener('contextmenu', contextMenu);
+      if (modelGroup.parent) modelGroup.parent.remove(modelGroup);
+      disposeObjectTree(modelGroup);
       host.removeChild(renderer.domElement);
       renderer.dispose();
     };
-  }, [model]);
+  }, [model, selectedId]);
 
   return (
     <div className="three-viewport" ref={hostRef} data-selected-id={selectedId ?? ''} data-active-tool={activeTool}>
