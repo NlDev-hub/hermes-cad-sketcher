@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Component, Download, FolderOpen, Move3D, Ruler, RotateCw, Save, Square, Slash, Upload } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Box, Component, Download, FolderOpen, Move3D, Ruler, RotateCw, Save, Square, Slash, Trash2, Upload } from 'lucide-react';
 import { SketchModel, type ToolName } from './core/model';
 import { vec, type Vec3 } from './core/geometry';
 import { formatTapeMeasurement } from './core/toolState';
@@ -9,6 +9,7 @@ import { exportAsciiStl } from './core/stl';
 import { BoxDimensionsPanel } from './ui/BoxDimensionsPanel';
 import { createBoxDraft, createLineDraft, createRectangleDraft, DEFAULT_BOX_DIMENSIONS } from './ui/drawingController';
 import { getPrimaryActionLabel, getToolInstructions } from './ui/toolInstructions';
+import { shouldDeleteSelectionFromKey } from './ui/selectionControls';
 import { ThreeViewport } from './ui/ThreeViewport';
 import './styles.css';
 
@@ -52,6 +53,7 @@ export default function App() {
     m.createComponent('Beispiel-Komponente Tischkörper', [box.id, line.id]);
     setModel(m);
     setSelectedId(box.id);
+    setLastMeasurement('noch keine Messung');
     setProjectStatus('Beispiel geladen');
   }
 
@@ -76,6 +78,24 @@ export default function App() {
   function measureFromViewport(start: Vec3, end: Vec3) {
     setLastMeasurement(formatTapeMeasurement(model, start, end));
   }
+
+  function deleteSelectedEntity() {
+    if (!selectedId) return;
+    mutate((m) => {
+      m.deleteEntity(selectedId);
+      setSelectedId(undefined);
+    });
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!selectedId || !shouldDeleteSelectionFromKey(event)) return;
+      event.preventDefault();
+      deleteSelectedEntity();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [model, selectedId]);
 
   function download(filename: string, content: string, mime = 'text/plain') {
     const blob = new Blob([content], { type: mime });
@@ -116,6 +136,9 @@ export default function App() {
         ))}
         <button className="primary" onClick={loadExampleModel}>{getPrimaryActionLabel()}</button>
         <p className="tool-instruction">{getToolInstructions(tool)}</p>
+        <button title="Ausgewähltes Element löschen" disabled={!selectedId} onClick={deleteSelectedEntity}>
+          <Trash2 size={18}/> Auswahl löschen
+        </button>
         {tool === 'box' && <BoxDimensionsPanel dimensions={boxDimensions} onChange={setBoxDimensions} />}
         <button onClick={saveProjectFile}><Save size={18}/> Projekt speichern</button>
         <label className="file-button">
