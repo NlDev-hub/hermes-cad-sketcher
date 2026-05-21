@@ -4,7 +4,8 @@ import { SketchModel, formatMillimeters, type ToolName } from './core/model';
 import { vec, type Vec3 } from './core/geometry';
 import { exportDxf } from './core/dxf';
 import { exportAsciiStl } from './core/stl';
-import { createBoxDraft, createLineDraft, createRectangleDraft } from './ui/drawingController';
+import { BoxDimensionsPanel } from './ui/BoxDimensionsPanel';
+import { createBoxDraft, createLineDraft, createRectangleDraft, DEFAULT_BOX_DIMENSIONS } from './ui/drawingController';
 import { getPrimaryActionLabel, getToolInstructions } from './ui/toolInstructions';
 import { ThreeViewport } from './ui/ThreeViewport';
 import './styles.css';
@@ -30,6 +31,7 @@ export default function App() {
   });
   const [tool, setTool] = useState<ToolName>('select');
   const [selectedId, setSelectedId] = useState<string | undefined>(model.allEntities()[0]?.id);
+  const [boxDimensions, setBoxDimensions] = useState(DEFAULT_BOX_DIMENSIONS);
 
   const selected = selectedId ? model.getEntity(selectedId) : undefined;
   const measure = useMemo(() => formatMillimeters(model.measure(vec(0, 0, 0), vec(2400, 0, 0))), [model]);
@@ -62,7 +64,7 @@ export default function App() {
   }
 
   function createBoxFromViewport(origin: Vec3) {
-    const draft = createBoxDraft(origin);
+    const draft = createBoxDraft(origin, boxDimensions);
     if (!draft.ok) return;
     mutate((m) => setSelectedId(m.createBox(draft.origin, draft.width, draft.depth, draft.height).id));
   }
@@ -89,6 +91,7 @@ export default function App() {
         ))}
         <button className="primary" onClick={loadExampleModel}>{getPrimaryActionLabel()}</button>
         <p className="tool-instruction">{getToolInstructions(tool)}</p>
+        {tool === 'box' && <BoxDimensionsPanel dimensions={boxDimensions} onChange={setBoxDimensions} />}
         <button onClick={() => download('hermes-cad-sketcher.dxf', exportDxf(model), 'application/dxf')}><Download size={18}/> DXF exportieren</button>
         <button onClick={() => download('hermes-cad-sketcher.stl', exportAsciiStl(model), 'model/stl')}><Download size={18}/> STL exportieren</button>
       </aside>
